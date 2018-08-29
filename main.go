@@ -1,22 +1,22 @@
 package main
 
 import (
-	"github.com/urfave/cli"
-	"os"
-	"runtime"
+    "github.com/urfave/cli"
+    "os"
+    "runtime"
 )
 
 const VERSION string = "1.0.0"
 
 func main() {
-	initCmdArgs()
+    initCmdArgs()
 }
 
 /**
 获取当前系统类型，是windows还是linux
 */
 func getSysType() string {
-	return runtime.GOOS
+    return runtime.GOOS
 }
 
 /**
@@ -33,8 +33,8 @@ func readConf() {
 显示session列表
 */
 func showSessionList(c *cli.Context) error {
-	print("1. root@127.0.0.1")
-	return nil
+    print("1. root@127.0.0.1")
+    return nil
 }
 
 /**
@@ -48,19 +48,19 @@ func saveConf() {
 读取命令行参数
 */
 func initCmdArgs() {
-	app := cli.NewApp()
-	app.Name = "sss"
-	app.Version = VERSION
-	app.Commands = []cli.Command{
-		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "show session list",
-			Action:  showSessionList,
-		},
-	}
+    app := cli.NewApp()
+    app.Name = "sss"
+    app.Version = VERSION
+    app.Commands = []cli.Command{
+        {
+            Name:    "list",
+            Aliases: []string{"ls"},
+            Usage:   "show session list",
+            Action:  showSessionList,
+        },
+    }
 
-	app.Run(os.Args)
+    app.Run(os.Args)
 }
 
 /**
@@ -81,7 +81,7 @@ func decrypt() {
 执行命令
 */
 func executeCmd(cmd string) {
-	print("execute " + cmd)
+    print("execute " + cmd)
 }
 
 /**
