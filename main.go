@@ -1,22 +1,29 @@
 package main
 
 import (
-    "github.com/urfave/cli"
-    "os"
-    "runtime"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"runtime"
+	"strings"
+	"syscall"
+
+	"github.com/urfave/cli"
 )
 
 const VERSION string = "1.0.0"
 
 func main() {
-    initCmdArgs()
+	initCmdArgs()
+	executeCmd("ping", "127.0.0.1")
 }
 
 /**
 获取当前系统类型，是windows还是linux
 */
 func getSysType() string {
-    return runtime.GOOS
+	return runtime.GOOS
 }
 
 /**
@@ -33,8 +40,8 @@ func readConf() {
 显示session列表
 */
 func showSessionList(c *cli.Context) error {
-    print("1. root@127.0.0.1")
-    return nil
+	print("1. root@127.0.0.1")
+	return nil
 }
 
 /**
@@ -48,19 +55,20 @@ func saveConf() {
 读取命令行参数
 */
 func initCmdArgs() {
-    app := cli.NewApp()
-    app.Name = "sss"
-    app.Version = VERSION
-    app.Commands = []cli.Command{
-        {
-            Name:    "list",
-            Aliases: []string{"ls"},
-            Usage:   "show session list",
-            Action:  showSessionList,
-        },
-    }
+	app := cli.NewApp()
+	app.Name = "sss"
+	app.Usage = "super ssh"
+	app.Version = VERSION
+	app.Commands = []cli.Command{
+		{
+			Name:    "list",
+			Aliases: []string{"ls"},
+			Usage:   "show session list",
+			Action:  showSessionList,
+		},
+	}
 
-    app.Run(os.Args)
+	app.Run(os.Args)
 }
 
 /**
@@ -80,13 +88,21 @@ func decrypt() {
 /**
 执行命令
 */
-func executeCmd(cmd string) {
-    print("execute " + cmd)
-}
+func executeCmd(name string, arg ...string) {
+	log.Println("executeCmd name: " + name + " arg: " + strings.Join(arg, ","))
+	bin, lookErr := exec.LookPath(name)
 
-/**
-输出帮助信息
-*/
-func help() {
+	if lookErr != nil {
+		print(lookErr)
+	}
 
+	// TODO: 此方法在linux上可用(替换当前进程)，Windows上需使用其他方式
+	env := os.Environ()
+	args := []string{name}
+	args = append(args, arg...)
+	exeErr := syscall.Exec(bin, args, env)
+	if exeErr != nil {
+		log.Println("execute error")
+		fmt.Printf("execute error: %v", exeErr)
+	}
 }
