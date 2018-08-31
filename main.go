@@ -2,25 +2,67 @@ package main
 
 import (
     "fmt"
+    "log"
+    "os"
+    "regexp"
+    "runtime"
+    "strconv"
+
     "github.com/urfave/cli"
     "golang.org/x/crypto/ssh"
     "golang.org/x/crypto/ssh/terminal"
-    "log"
-    "os"
-    "runtime"
 )
 
 const VERSION string = "1.0.0"
 
+/**
+SSH连接配置
+ */
 type SSHConfig struct {
-    host     string
-    port     int
-    username string
-    password string
+    Host     string `json:"host"`
+    Port     int    `json:"port"`
+    User     string `json:"user"`
+    Password string `json:"password"`
 }
 
-func main() {
-    initCmdArgs()
+/**
+SSH配置缓存
+ */
+type SSHCache struct {
+    Address        string `json:"address"`
+    CipherPassword string `json:"cipher_password"`
+}
+
+/**
+SSH配置 转 SSH缓存
+ */
+func config2cache(config SSHConfig) SSHCache {
+    return SSHCache{
+        Address:        fmt.Sprintf("%s@%s:%d", config.User, config.Host, config.Port),
+        CipherPassword: encrypt(config.Password),
+    }
+}
+
+/**
+SSH缓存 转 SSH配置
+ */
+func cache2config(cache SSHCache) SSHConfig {
+    pattern := regexp.MustCompile(`([\w]+)@([\w1-9.]+):([\d{2,5}]+)`)
+    params := pattern.FindStringSubmatch(cache.Address)
+
+    if params != nil {
+        port, _ := strconv.Atoi(params[3])
+
+        return SSHConfig{
+            User:     params[1],
+            Host:     params[2],
+            Port:     port,
+            Password: decrypt(cache.CipherPassword),
+        }
+    } else {
+        return SSHConfig{}
+    }
+
 }
 
 /**
@@ -56,7 +98,7 @@ func saveConf() {
 }
 
 /**
-读取命令行参数
+初始化命令行参数
 */
 func initCmdArgs() {
     app := cli.NewApp()
@@ -102,18 +144,20 @@ func initCmdArgs() {
 /**
 加密
 */
-func encrypt() {
-
+func encrypt(plain string) string {
+    // TODO: to finish
+    return plain
 }
 
 /**
 解密
 */
-func decrypt() {
-
+func decrypt(cipher string) string {
+    // TODO: to finish
+    return cipher
 }
 
-func inpurPassword() string {
+func inputPassword() string {
     fmt.Printf("input password: \n")
     pass, _ := terminal.ReadPassword(0)
     return string(pass)
@@ -129,18 +173,18 @@ func runSSH(c *cli.Context) error {
     // Create client config
 
     sshConfig := SSHConfig{
-        host:     c.String("host"),
-        port:     c.Int("port"),
-        username: c.String("user"),
-        password: inpurPassword(),
+        Host:     c.String("host"),
+        Port:     c.Int("port"),
+        User:     c.String("user"),
+        Password: inputPassword(),
     }
 
-    address := fmt.Sprintf("%s:%d", sshConfig.host, sshConfig.port)
+    address := fmt.Sprintf("%s:%d", sshConfig.Host, sshConfig.Port)
 
     config := &ssh.ClientConfig{
-        User: sshConfig.username,
+        User: sshConfig.User,
         Auth: []ssh.AuthMethod{
-            ssh.Password(sshConfig.password),
+            ssh.Password(sshConfig.Password),
         },
         //HostKeyCallback: ssh.FixedHostKey(hostKey),
         HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -152,7 +196,7 @@ func runSSH(c *cli.Context) error {
     // Connect to ssh server
     conn, err := ssh.Dial("tcp", address, config)
     if err != nil {
-        log.Fatal("unable to connect: "+sshConfig.username+"@"+address+" error: ", err)
+        log.Fatal("unable to connect: "+sshConfig.User+"@"+address+" error: ", err)
     }
 
     defer conn.Close()
@@ -182,4 +226,8 @@ func runSSH(c *cli.Context) error {
 
     session.Run("bash")
     return nil
+}
+
+func main() {
+    initCmdArgs()
 }
