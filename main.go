@@ -11,7 +11,6 @@ import (
 
 	"github.com/urfave/cli"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 const VERSION string = "1.0.0"
@@ -114,19 +113,24 @@ func executeCmd(name string, arg ...string) {
 	}
 }
 
+/**
+执行ssh
+*/
 func runSSH(c *cli.Context) error {
+	// TODO: 修复进去bash后输入内容重复输出的问题
+	// TODO: 修复ctrl+c退出的问题
 	//var hostKey ssh.PublicKey
 	// Create client config
 	config := &ssh.ClientConfig{
-		User: "username",
+		User: "yancai",
 		Auth: []ssh.AuthMethod{
-			ssh.Password("123456"),
+			ssh.Password("`123qwe"),
 		},
 		//HostKeyCallback: ssh.FixedHostKey(hostKey),
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	// Connect to ssh server
-	conn, err := ssh.Dial("tcp", "127.0.0.1:22", config)
+	conn, err := ssh.Dial("tcp", "192.168.74.129:22", config)
 	if err != nil {
 		log.Fatal("unable to connect: ", err)
 	}
@@ -137,23 +141,12 @@ func runSSH(c *cli.Context) error {
 		log.Fatal("unable to create session: ", err)
 	}
 
-	fd := int(os.Stdin.Fd())
-	oldState, err := terminal.MakeRaw(fd)
-	if err != nil {
-		log.Fatal("make raw error: ", err)
-	}
-	defer terminal.Restore(fd, oldState)
-
 	session.Stdin = os.Stdin
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
 
-	tw, th, err := terminal.GetSize(fd)
-	if err != nil {
-		log.Fatal("get size error: ", err)
-	}
-
 	defer session.Close()
+
 	// Set up terminal modes
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          1,
@@ -162,7 +155,7 @@ func runSSH(c *cli.Context) error {
 	}
 
 	// Request pseudo terminal
-	if err := session.RequestPty("xterm", th, tw, modes); err != nil {
+	if err := session.RequestPty("xterm", 30, 80, modes); err != nil {
 		log.Fatal("request for pseudo terminal failed: ", err)
 	}
 
