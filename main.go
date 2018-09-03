@@ -4,66 +4,15 @@ import (
     "fmt"
     "log"
     "os"
-    "regexp"
     "runtime"
-    "strconv"
 
     "github.com/urfave/cli"
     "golang.org/x/crypto/ssh"
     "golang.org/x/crypto/ssh/terminal"
+    "github.com/yancai/sss/util"
 )
 
 const VERSION string = "1.0.0"
-
-/**
-SSH连接配置
- */
-type SSHConfig struct {
-    Host     string `json:"host"`
-    Port     int    `json:"port"`
-    User     string `json:"user"`
-    Password string `json:"password"`
-}
-
-/**
-SSH配置缓存
- */
-type SSHCache struct {
-    Address        string `json:"address"`
-    CipherPassword string `json:"cipher_password"`
-}
-
-/**
-SSH配置 转 SSH缓存
- */
-func config2cache(config SSHConfig) SSHCache {
-    return SSHCache{
-        Address:        fmt.Sprintf("%s@%s:%d", config.User, config.Host, config.Port),
-        CipherPassword: encrypt(config.Password),
-    }
-}
-
-/**
-SSH缓存 转 SSH配置
- */
-func cache2config(cache SSHCache) SSHConfig {
-    pattern := regexp.MustCompile(`([\w]+)@([\w1-9.]+):([\d{2,5}]+)`)
-    params := pattern.FindStringSubmatch(cache.Address)
-
-    if params != nil {
-        port, _ := strconv.Atoi(params[3])
-
-        return SSHConfig{
-            User:     params[1],
-            Host:     params[2],
-            Port:     port,
-            Password: decrypt(cache.CipherPassword),
-        }
-    } else {
-        return SSHConfig{}
-    }
-
-}
 
 /**
 获取当前系统类型，是windows还是linux
@@ -141,22 +90,6 @@ func initCmdArgs() {
     app.Run(os.Args)
 }
 
-/**
-加密
-*/
-func encrypt(plain string) string {
-    // TODO: to finish
-    return plain
-}
-
-/**
-解密
-*/
-func decrypt(cipher string) string {
-    // TODO: to finish
-    return cipher
-}
-
 func inputPassword() string {
     fmt.Printf("input password: \n")
     pass, _ := terminal.ReadPassword(0)
@@ -172,7 +105,7 @@ func runSSH(c *cli.Context) error {
     //var hostKey ssh.PublicKey
     // Create client config
 
-    sshConfig := SSHConfig{
+    sshConfig := util.SSHConfig{
         Host:     c.String("host"),
         Port:     c.Int("port"),
         User:     c.String("user"),
