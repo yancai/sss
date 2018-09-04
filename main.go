@@ -4,11 +4,13 @@ import (
     "fmt"
     "log"
     "os"
-    "github.com/urfave/cli"
+    "strconv"
+
     "golang.org/x/crypto/ssh"
     "golang.org/x/crypto/ssh/terminal"
+
+    "github.com/urfave/cli"
     "github.com/yancai/sss/util"
-    "strconv"
 )
 
 const VERSION string = "1.0.0"

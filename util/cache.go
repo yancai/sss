@@ -2,12 +2,13 @@ package util
 
 import (
     "encoding/json"
-    "log"
-    "io/ioutil"
     "fmt"
+    "io/ioutil"
+    "log"
+    "os"
     "regexp"
     "strconv"
-    "os"
+
     "github.com/mitchellh/go-homedir"
 )
 
@@ -75,11 +76,15 @@ func cache2config(cache SSHCache) SSHConfig {
     if params != nil {
         port, _ := strconv.Atoi(params[3])
 
+        plain, err := decrypt(cache.CipherPassword)
+        if err != nil {
+            log.Fatal("decrypt password error: ", err)
+        }
         return SSHConfig{
             User:     params[1],
             Host:     params[2],
             Port:     port,
-            Password: decrypt(cache.CipherPassword),
+            Password: plain,
         }
     } else {
         return SSHConfig{}
@@ -216,7 +221,7 @@ func (manager *SSHCacheManager) GetConfig(id int) (SSHConfig, error) {
 /**
 从缓存中删除指定id的记录
  */
-func (manager * SSHCacheManager) DelCache(id int) {
+func (manager *SSHCacheManager) DelCache(id int) {
     for k, v := range manager.cacheMap {
         if v.ID == id {
             delete(manager.cacheMap, k)
