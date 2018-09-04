@@ -4,46 +4,24 @@ import (
     "fmt"
     "log"
     "os"
-    "runtime"
-
     "github.com/urfave/cli"
     "golang.org/x/crypto/ssh"
     "golang.org/x/crypto/ssh/terminal"
     "github.com/yancai/sss/util"
+    "strconv"
 )
 
 const VERSION string = "1.0.0"
 
 /**
-获取当前系统类型，是windows还是linux
+显示cache列表
 */
-func getSysType() string {
-    return runtime.GOOS
-}
-
-/**
-读取~/.sss/sss.json文件
-
-Linux下为~/.sss/sss.json
-Windows下为%USERPROFILE%/.sss/sss.json
-*/
-func readConf() {
-
-}
-
-/**
-显示session列表
-*/
-func showSessionList(c *cli.Context) error {
-    print("1. root@127.0.0.1")
-    return nil
-}
-
-/**
-保存~/.sss/sss.json文件
-*/
-func saveConf() {
-
+func showCacheList(c *cli.Context) {
+    caches := util.ReadCache()
+    fmt.Printf("%2v\t%v\n", "ID", "Address")
+    for _, v := range caches {
+        fmt.Printf("%2v\t%v\n", v.ID, v.Address)
+    }
 }
 
 /**
@@ -60,30 +38,53 @@ func initCmdArgs() {
             Name:    "list",
             Aliases: []string{"ls"},
             Usage:   "show session list",
-            Action:  showSessionList,
+            Action:  showCacheList,
         },
         {
             Name:    "connect",
             Aliases: []string{"c"},
             Usage:   "connect to ssh",
-            Action:  runSSH,
+            Action:  connectTo,
             Flags: []cli.Flag{
                 cli.StringFlag{
                     Name:  "host, H",
                     Value: "localhost",
-                    Usage: "host",
+                    Usage: "Host",
                 },
                 cli.IntFlag{
                     Name:  "port, p",
                     Value: 22,
-                    Usage: "port",
+                    Usage: "Port",
                 },
                 cli.StringFlag{
                     Name:  "user, u",
                     Value: "root",
-                    Usage: "user",
+                    Usage: "User",
+                },
+                cli.IntFlag{
+                    Name:  "id, i",
+                    Value: -1,
+                    Usage: "cache Id",
                 },
             },
+        },
+        {
+            Name:    "id",
+            Aliases: []string{"i"},
+            Usage:   "connect to ssh by id",
+            Action:  sshById,
+        },
+        {
+            Name:    "delete",
+            Aliases: []string{"d"},
+            Usage:   "delete session by id",
+            Action:  delSSSCache,
+        },
+        {
+            Name:    "purge",
+            Aliases: []string{"p"},
+            Usage:   "purge sss cache",
+            Action:  purgeSSSCache,
         },
     }
 
@@ -97,20 +98,54 @@ func inputPassword() string {
 }
 
 /**
+通过id连接ssh
+ */
+func sshById(c *cli.Context) error {
+    idStr := c.Args().Get(0)
+    id, _ := strconv.Atoi(idStr)
+    manager := util.NewSSHCacheManager()
+    sshConfig, err := manager.GetConfig(id)
+    if err != nil {
+        return err
+    }
+    runSSH(sshConfig)
+    return nil
+}
+
+/**
+通过host, port, user, password连接
+ */
+func connectTo(c *cli.Context) error {
+    manager := util.NewSSHCacheManager()
+
+    id := c.Int("id")
+    var sshConfig util.SSHConfig
+    if id == -1 {
+        sshConfig = util.SSHConfig{
+            Host:     c.String("host"),
+            Port:     c.Int("port"),
+            User:     c.String("user"),
+            Password: inputPassword(),
+        }
+    } else {
+        var err error
+        sshConfig, err = manager.GetConfig(id)
+        if err != nil {
+            return err
+        }
+    }
+    runSSH(sshConfig)
+    return nil
+}
+
+/**
 执行ssh
 */
-func runSSH(c *cli.Context) error {
+func runSSH(sshConfig util.SSHConfig) {
     // TODO: 修复进去bash后输入内容重复输出的问题
     // TODO: 修复ctrl+c退出的问题
     //var hostKey ssh.PublicKey
     // Create client config
-
-    sshConfig := util.SSHConfig{
-        Host:     c.String("host"),
-        Port:     c.Int("port"),
-        User:     c.String("user"),
-        Password: inputPassword(),
-    }
 
     address := fmt.Sprintf("%s:%d", sshConfig.Host, sshConfig.Port)
 
@@ -131,6 +166,11 @@ func runSSH(c *cli.Context) error {
     if err != nil {
         log.Fatal("unable to connect: "+sshConfig.User+"@"+address+" error: ", err)
     }
+
+    manager := util.NewSSHCacheManager()
+    // 保存cache
+    manager.AddToCache(sshConfig)
+    manager.SaveCache()
 
     defer conn.Close()
     // Create a session
@@ -158,6 +198,26 @@ func runSSH(c *cli.Context) error {
     }
 
     session.Run("bash")
+}
+
+/**
+清理ssh连接缓存
+ */
+func purgeSSSCache(c *cli.Context) error {
+    manager := util.NewSSHCacheManager()
+    manager.PurgeCache()
+    return nil
+}
+
+func delSSSCache(c *cli.Context) error {
+    manager := util.NewSSHCacheManager()
+    idStr := c.Args().Get(0)
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        log.Fatal("parse id error: ", err)
+    }
+
+    manager.DelCache(id)
     return nil
 }
 
